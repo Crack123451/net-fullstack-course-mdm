@@ -12,7 +12,9 @@ namespace AlfaBank.WebApi
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.AspNetCore.Mvc;
+    using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.OpenApi.Models;
 
     /// <summary>
     /// This class start this program.
@@ -20,6 +22,18 @@ namespace AlfaBank.WebApi
     [ExcludeFromCodeCoverage]
     public class Startup
     {
+        public IConfiguration Configuration { get; set; }
+
+        public Startup(IHostingEnvironment env)
+        {
+            var builder = new ConfigurationBuilder()
+                .SetBasePath(env.ContentRootPath)
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true)
+                .AddEnvironmentVariables();
+            Configuration = builder.Build();
+        }
+
         /// <summary>
         /// Service configure.
         /// </summary>
@@ -32,6 +46,11 @@ namespace AlfaBank.WebApi
             services.AddInMemoryUserStorage();
 
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+            services.AddHealthChecks();
+            services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "My API", Version = "v1" });
+            });
         }
 
         /// <summary>
@@ -47,8 +66,15 @@ namespace AlfaBank.WebApi
                 app.UseDeveloperExceptionPage();
             }
 
+            app.UseHealthChecks("/health");
             app.UseHttpStatusCodeExceptionMiddleware();
 
+            app.UseSwagger();
+            
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
+            });
             app.UseMvc();
         }
     }
